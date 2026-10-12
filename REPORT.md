@@ -109,8 +109,15 @@ Tức là dataset được tạo từ hai file video có đúng sha256 trên, c�
 ### Câu 9
 Mô tả chính xác điều xảy ra khi trip của bạn sập rồi chạy lại: bao nhiêu task chuyển đỏ, bao nhiêu task `upstream_failed`, bạn clear gì, dữ liệu có nhân đôi không, `dataset_version` có đổi không? Bằng chứng (ảnh, số) là gì?
 
-<!-- TODO: điền sau khi làm bài tập trong Airflow (GUIDE bước 5). Đếm số task trên Graph. -->
-Trip của tôi: `trip-03365`. Đặt `LAB_FAIL_ONCE=trip-03365`, trigger `day09_reset` rồi `day09_video_pipeline`: **1** task `silver_frames` (map index ứng với `trip-03365`) chuyển đỏ, log có dòng `simulated crash while extracting trip-03365`; **<điền số>** task phía sau chuyển `upstream_failed`; 25 task `silver_frames` còn lại vẫn xanh. Tôi chỉ **clear task đỏ** đó (không clear cả DAG): nó chạy lại thành công, các task `upstream_failed` tự chạy tiếp, DAG xanh. Dữ liệu không nhân đôi vì trip được ghi bằng Delta overwrite theo partition (giống thí nghiệm idempotent: 1246 dòng trước và sau). `verify` vẫn 27/27 và `dataset_version` vẫn `9d1af6bea320`. Bằng chứng: `report/screenshots/fail_task_log.png` (log task đỏ), `report/screenshots/airflow_graph.png` (Graph xanh sau khi clear).
+Trip của tôi: `trip-03365` (`202602798 % 26 = 8`). Đặt `LAB_FAIL_ONCE=trip-03365`, trigger `day09_reset` rồi `day09_video_pipeline` (run `manual__2026-10-12T14:20:15`):
+
+- **1 task đỏ**: `silver_frames` **map index 8**, log ghi `RuntimeError: simulated crash while extracting trip-03365; run it again`. 25 task `silver_frames` còn lại vẫn **success**, vì mỗi trip là một task độc lập.
+- **7 task `upstream_failed`**: `dbt_run_silver`, `dbt_test_silver`, `dbt_run_gold`, `dbt_test_gold`, `publish_lake`, `export_dataset`, `publish_warehouse`. Chúng bị chặn chứ không chạy với dữ liệu thiếu một trip, nên không có dataset gold "thiếu 60 khung" nào được xuất ra.
+- **Tôi chỉ clear** task `silver_frames` [8] (kèm downstream). Như vậy chạy lại 1 task trích khung (chỉ `trip-03365`) cộng 7 task phía sau. Bronze, `trip_commands` và 25 trip kia **không** chạy lại. Sau khi clear, run chuyển **success**: 37/37 task instance success (11 task + 26 task mapped).
+- **Không nhân đôi**: sau khi chạy lại, `silver.frames` có **1246 dòng = 1246 `frame_id` khác nhau**, `trip-03365` có đúng **60 khung**, vì task ghi bằng Delta overwrite theo partition `trip_id`.
+- **`dataset_version` không đổi**: `scripts/lab.sh verify` vẫn **27/27**, version **`9d1af6bea320`**, giống lần chạy không lỗi.
+
+Bằng chứng: `report/screenshots/fail_task_log.png` (log task đỏ thấy `trip-03365`), `report/screenshots/airflow_after_clear.png` (Graph xanh sau khi clear), `report/screenshots/airflow_graph.png` (lần chạy xanh từ lake trống).
 
 ### Câu 10
 Nâng từ 2 drive lên **500 xe mỗi ngày**: ba thành phần nào của pipeline này sẽ vỡ đầu tiên, và bạn thay bằng gì (nối với slide 12, 22, 23)?
