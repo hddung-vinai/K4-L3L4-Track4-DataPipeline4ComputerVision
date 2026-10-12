@@ -1,0 +1,16 @@
+{
+  "experiment": "bonus_sync_tol_ms",
+  "student_id": "202602798",
+  "ran_at": "2026-10-12T14:57:00+00:00",
+  "how": "scripts/lab.sh dbt run --select silver_frame_telemetry+ --vars \"{sync_tol_ms: <t>}\" (khong sua dbt_project.yml); sau do scripts/lab.sh step all --reset de khoi phuc mac dinh 150",
+  "default_sync_tol_ms": 150,
+  "silver_frames_total": {"drive_a": 602, "drive_b": 644},
+  "results": [
+    {"sync_tol_ms": 50,   "sync_lost": {"drive_a": 272, "drive_b": 328}, "gold_frames": {"drive_a": 242, "drive_b": 296}, "gold_total": 538},
+    {"sync_tol_ms": 100,  "sync_lost": {"drive_a": 137, "drive_b": 187}, "gold_frames": {"drive_a": 345, "drive_b": 417}, "gold_total": 762},
+    {"sync_tol_ms": 150,  "sync_lost": {"drive_a": 7,   "drive_b": 7},   "gold_frames": {"drive_a": 436, "drive_b": 583}, "gold_total": 1019},
+    {"sync_tol_ms": 300,  "sync_lost": {"drive_a": 7,   "drive_b": 7},   "gold_frames": {"drive_a": 436, "drive_b": 583}, "gold_total": 1019},
+    {"sync_tol_ms": 1000, "sync_lost": {"drive_a": 5,   "drive_b": 6},   "gold_frames": {"drive_a": 438, "drive_b": 584}, "gold_total": 1022}
+  ],
+  "restored": {"sync_tol_ms": 150, "verify": "27/27", "dataset_version": "9d1af6bea320"}
+}

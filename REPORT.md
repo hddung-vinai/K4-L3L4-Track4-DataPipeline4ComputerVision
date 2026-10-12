@@ -145,6 +145,20 @@ limit 10;
 
 Kết quả (5 trip đầu): `trip-04622` loại 56,7% (60 → 26 khung, 67,1 km/h, train), `trip-03904` 50,0% (22 → 11, test), `trip-02086` 46,7% (17,6 km/h), `trip-08888` 40,0% (6,5 km/h), `trip-07774` 38,2% (12,8 km/h). Cả 5 đều thuộc drive_a, trời ban ngày nhiều mây, nên không phải do ánh sáng. Phần lớn là xe **chạy chậm** (6–18 km/h) nên khung liền nhau bị dHash coi là trùng. Riêng `trip-04622` chạy nhanh mà vẫn mất 57%, phù hợp với đoạn camera đứng hình 6 giây và khung mờ được cấy vào drive_a. Hệ quả vận hành: dataset ít khung từ cảnh xe chậm/đô thị, nên cân nhắc lấy mẫu theo quãng đường hoặc ngưỡng trùng theo tốc độ.
 
+## Điểm cộng: thí nghiệm riêng, thay đổi `sync_tol_ms`
+
+`sync_tol_ms` (mặc định 150) là độ lệch tối đa giữa một khung hình và dòng telemetry gần nhất (ASOF join theo event time). Khung lệch quá ngưỡng bị gắn `sync_lost` và bị loại khỏi gold. Tôi chạy `scripts/lab.sh dbt run --select silver_frame_telemetry+ --vars "{sync_tol_ms: <t>}"`, tức là **không sửa `dbt_project.yml`**, rồi đếm. Bằng chứng: `report/evidence/bonus_sync_tol.json`.
+
+| `sync_tol_ms` | mất đồng bộ A / B | khung gold A / B | tổng gold |
+|---|---|---|---|
+| 50 | 272 / 328 | 242 / 296 | 538 (−47%) |
+| 100 | 137 / 187 | 345 / 417 | 762 (−25%) |
+| **150** (mặc định) | **7 / 7** | **436 / 583** | **1019** |
+| 300 | 7 / 7 | 436 / 583 | 1019 |
+| 1000 | 5 / 6 | 438 / 584 | 1022 |
+
+Đọc kết quả: telemetry ghi khoảng 10 Hz (mỗi ~80–100 ms một mẫu), nên độ lệch tự nhiên giữa khung và mẫu telemetry trước nó dao động 0–100 ms (trung bình 66 / 73 ms ở bước 3). Ngưỡng 50 hay 100 ms cắt vào chính phân bố bình thường này và loại oan **25–47%** dataset dù dữ liệu không hỏng. Từ 150 đến 300 kết quả **không đổi**: 14 khung còn lại mất đồng bộ là do các đoạn **cảm biến mất tín hiệu thật** (độ trễ tối đa 2884 / 3112 ms). Nới tới 1000 ms chỉ "cứu" thêm 3 khung, nhưng các khung này bị gán telemetry cũ gần 1 giây; ở 60 km/h là lệch ~17 m, nên nhãn tốc độ/góc lái sai. Vì vậy 150 ms là lựa chọn hợp lý: lớn hơn chu kỳ lấy mẫu một chút, đủ chặt để loại khung nằm trong khoảng mất tín hiệu. Ngưỡng nên được suy ra từ tần số telemetry (≈ 1,5 × chu kỳ lấy mẫu) chứ không phải chọn tuỳ ý. Sau thí nghiệm tôi chạy `step all --reset` để khôi phục mặc định: verify 27/27, `dataset_version` vẫn `9d1af6bea320`.
+
 ## Nhìn lại
 
 Điều bạn thấy bất ngờ nhất, điều gì còn chưa rõ, và một lỗi dữ liệu mà bạn nghĩ pipeline **chưa** bắt được (nếu có). Tối đa 8 dòng.
